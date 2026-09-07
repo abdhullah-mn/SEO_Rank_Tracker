@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { SearchIcon, GlobeIcon, FileSearchIcon, BrainIcon, CheckCircleIcon, AlertCircle, Loader2, ArrowRightIcon } from "lucide-react";
+import { useApp } from "../context/AppContext";
 
 const STEPS = [
     { icon: <GlobeIcon size={22} />, label: "Connecting to browser", desc: "Creating cloud browser session..." },
@@ -17,7 +18,8 @@ export default function Analyze() {
     const [currentStep, setCurrentStep] = useState(0);
     const [error, setError] = useState("");
     const [searchParams] = useSearchParams();
-    const pollRef = useRef<any>(null);
+    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const { api } = useApp();
 
     const navigate = useNavigate();
 
@@ -28,14 +30,18 @@ export default function Analyze() {
         setError("");
         setAnalyzing(true);
         setCurrentStep(0);
+        setCurrentStep(1);
 
-        setTimeout(() => setCurrentStep(1), 1000);
-        setTimeout(() => setCurrentStep(2), 3000);
-        setTimeout(() => setCurrentStep(3), 6000);
-        setTimeout(() => {
+        try {
+            const { data } = await api.post("/api/analyses", { url: targetUrl.trim() });
+            setCurrentStep(3);
             setAnalyzing(false);
-            navigate(`/report/id123`);
-        }, 8000);
+            navigate(`/report/${data.analysis._id}`);
+        } catch (requestError: any) {
+            setAnalyzing(false);
+            setCurrentStep(0);
+            setError(requestError.response?.data?.message || "Unable to analyze this website.");
+        }
     };
 
     const handleSubmit = (e: React.SubmitEvent) => {

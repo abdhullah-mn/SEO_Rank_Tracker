@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import ScoreGauge from "../components/ScoreGauge";
 import IssueCard from "../components/IssueCard";
 import { ArrowLeft, Globe, Clock, FileText, Image, Link2, Heading, Tag, AlertCircle, ExternalLink, Type, Search } from "lucide-react";
-import { dummyWebsiteAnalysis } from "../assets/assets";
+import { useApp } from "../context/AppContext";
 
 interface AnalysisData {
     _id: string;
@@ -57,16 +57,28 @@ interface AnalysisData {
 
 export default function Report() {
     const { id } = useParams();
+    const { api } = useApp();
     const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
     const [loading, setLoading] = useState(true);
-    const [error] = useState("");
+    const [error, setError] = useState("");
     const [activeTab, setActiveTab] = useState("overview");
 
     const fetchAnalysis = async () => {
-        setTimeout(() => {
-            setAnalysis(dummyWebsiteAnalysis);
+        if (!id) {
+            setError("Analysis ID is missing.");
             setLoading(false);
-        }, 1500);
+            return;
+        }
+
+        try {
+            const { data } = await api.get(`/api/analyses/${id}`);
+            setAnalysis(data.analysis);
+        } catch (requestError: unknown) {
+            const responseMessage = (requestError as { response?: { data?: { message?: string } } }).response?.data?.message;
+            setError(responseMessage || "Unable to load this report.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const getScoreClass = (s: number) => {

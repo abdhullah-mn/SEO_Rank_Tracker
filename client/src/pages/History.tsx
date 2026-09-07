@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Clock, Trash2, ExternalLink, Search, AlertCircle, Loader2, Filter, ArrowUpDown } from "lucide-react";
 import ScoreGauge from "../components/ScoreGauge";
-import { dummyAnalysisData } from "../assets/assets";
+import { useApp } from "../context/AppContext";
 
 interface AnalysisItem {
     _id: string;
@@ -19,6 +19,7 @@ interface AnalysisItem {
 }
 
 export default function History() {
+    const { api } = useApp();
     const [analyses, setAnalyses] = useState<AnalysisItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
@@ -30,19 +31,29 @@ export default function History() {
 
     const fetchAnalyses = async () => {
         setLoading(true);
-        setTimeout(() => {
-            setAnalyses(dummyAnalysisData);
+        try {
+            const { data } = await api.get("/api/analyses");
+            setAnalyses(data.analyses || []);
             setTotalPages(1);
+        } catch (error) {
+            console.error("Error fetching analyses:", error);
+            setAnalyses([]);
+        } finally {
             setLoading(false);
-        }, 1000);
+        }
     };
 
     const handleDelete = async (id: string) => {
         if (!confirm("Delete this analysis?")) return;
         setDeleting(id);
-        setTimeout(() => {
+        try {
+            await api.delete(`/api/analyses/${id}`);
+            setAnalyses((current) => current.filter((analysis) => analysis._id !== id));
+        } catch (error) {
+            console.error("Error deleting analysis:", error);
+        } finally {
             setDeleting(null);
-        }, 1000);
+        }
     };
 
     const getScoreClass = (s: number) => {
