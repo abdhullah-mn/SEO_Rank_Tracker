@@ -20,7 +20,7 @@ interface AppContextType {
 	logout: () => void;
 };
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "/";
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -115,6 +115,13 @@ export function AppProvider ({children}: {children: ReactNode}) {
     }
 
     const logout = async ()=>{
+        try {
+            if (token) {
+                await api.post("/api/auth/logout");
+            }
+        } catch (error) {
+            console.error("Error logging out:", error);
+        }
         setUser(null);
         setToken(null);
         localStorage.removeItem("token");

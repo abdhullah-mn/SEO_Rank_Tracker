@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema({
     analysisCount: {type: Number, default: 0},
     lastAnalysisDate: {type: Date, default: null},
     role: {type: String, default: "user", enum: ["user", "admin"]},
+    tokenVersion: {type: Number, default: 0},
 }, {timestamps: true});
 
 const User = mongoose.model("User", userSchema);

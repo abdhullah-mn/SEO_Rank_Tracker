@@ -1,11 +1,6 @@
 import User from "../models/User.js";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-
-//generate JWT token
-const generateToken = (id)=>{
-    return jwt.sign({id}, process.env.JWT_SECRET, {expiresIn: "30d"});
-}
+import { generateToken } from "../utils/jwt.js";
 
 
 
@@ -30,7 +25,7 @@ export const register = async (req,res)=>{
             password: hashedPassword
         });
 
-        const token = generateToken(user._id);
+        const token = generateToken({ id: user._id, tokenVersion: user.tokenVersion });
 
         const safeUser = user.toObject();
         delete safeUser.password;
@@ -60,7 +55,7 @@ export const login = async (req,res)=>{
             return res.status(400).json({message: "Invalid credentials"});
         }
 
-        const token = generateToken(existingUser._id);
+        const token = generateToken({ id: existingUser._id, tokenVersion: existingUser.tokenVersion });
 
         const safeUser = existingUser.toObject();
         delete safeUser.password;
@@ -90,4 +85,13 @@ export const getUser = async (req,res)=>{
         res.status(500).json({message: "Internal server error"});
     };
 }
+
+export const logout = async (req, res) => {
+    try {
+        await User.findByIdAndUpdate(req.userId, { $inc: { tokenVersion: 1 } });
+        return res.status(204).send();
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
 
