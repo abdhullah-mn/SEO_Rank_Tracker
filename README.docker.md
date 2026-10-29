@@ -2,7 +2,7 @@
 
 ## Production-like local stack
 
-1. Copy `.env.example` to `.env` and set a unique `JWT_SECRET`.
+1. Copy `.env.example` to `.env` and set a unique `JWT_SECRET` and your `SERP_API_KEY`.
 2. Start the stack:
 
 ```bash
