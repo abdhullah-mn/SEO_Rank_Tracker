@@ -129,7 +129,7 @@ export const updateKeyword = async (req,res)=>{
     try{
         const {id} = req.params;
         const userId = req.userId;
-        const {keyword, domain, url, active, status} = req.body;
+        const { keyword, domain, url, active, status } = req.body;
 
         const existingKeyword = await KeywordTracking.findOne({ _id: id, user: userId });
 
@@ -137,11 +137,27 @@ export const updateKeyword = async (req,res)=>{
             return res.status(404).json({ message: "Keyword not found." });
         }
 
-        // Update the keyword fields
-        existingKeyword.keyword = keyword || existingKeyword.keyword;
-        existingKeyword.domain = domain || existingKeyword.domain;
-        existingKeyword.url = url || existingKeyword.url;
-        existingKeyword.active = active !== undefined ? active === "true" : existingKeyword.active;
+        const nextKeyword = (keyword ?? existingKeyword.keyword).trim();
+        const nextDomain = (domain ?? existingKeyword.domain).trim().toLowerCase();
+        const nextUrl = (url ?? existingKeyword.url).trim();
+
+        if ((nextKeyword && nextKeyword !== existingKeyword.keyword) || nextDomain !== existingKeyword.domain) {
+            const duplicate = await KeywordTracking.findOne({
+                _id: { $ne: id },
+                user: userId,
+                keyword: nextKeyword.toLowerCase(),
+                domain: nextDomain,
+            });
+
+            if (duplicate) {
+                return res.status(409).json({ message: "You are already tracking this keyword for this domain." });
+            }
+        }
+
+        existingKeyword.keyword = nextKeyword.toLowerCase();
+        existingKeyword.domain = nextDomain;
+        existingKeyword.url = nextUrl;
+        existingKeyword.active = active === undefined ? existingKeyword.active : (typeof active === "string" ? active === "true" : Boolean(active));
         existingKeyword.status = status || existingKeyword.status;
 
         const updatedKeyword = await existingKeyword.save();

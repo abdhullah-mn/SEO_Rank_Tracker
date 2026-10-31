@@ -7,14 +7,12 @@ import authRouter from "./routes/authRoutes.js";
 import keywordRouter from "./routes/keywordRoutes.js";
 import analysisRouter from "./routes/analysisRoutes.js";
 
-const app = express();
+export const app = express();
 const port = process.env.PORT || 5000;
 
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
 	throw new Error("JWT_SECRET must be configured with at least 32 characters.");
 }
-
-connectDB(); // Connect to MongoDB
 
 const allowedOrigins = (process.env.CLIENT_ORIGINS || "http://localhost:8080,http://localhost:5173")
 	.split(",")
@@ -30,8 +28,7 @@ app.use(cors({
 		return callback(new Error("Origin is not allowed by CORS"));
 	},
 }));
-app.use(express.json()); // Middleware to parse incoming JSON requests
-
+app.use(express.json());
 
 app.get("/", (_request, response) => {
 	response.json({ message: "SEO Rank Tracker server is running" });
@@ -43,10 +40,22 @@ app.get("/healthz", (_request, response) => {
 		database: isDatabaseReady ? "connected" : "disconnected",
 	});
 });
-app.use("/api/auth", authRouter); // Use the authRouter for authentication routes
+app.use("/api/auth", authRouter);
 app.use("/api/keywords", keywordRouter);
 app.use("/api/analyses", analysisRouter);
 
-app.listen(port, () => {
-	console.log(`Server listening on port ${port}`);
-});
+export const startServer = async () => {
+	await connectDB();
+	return app.listen(port, () => {
+		console.log(`Server listening on port ${port}`);
+	});
+};
+
+if (process.env.NODE_ENV !== "test") {
+	startServer().catch((error) => {
+		console.error("Failed to start server:", error);
+		process.exit(1);
+	});
+}
+
+export default app;

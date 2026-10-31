@@ -2,89 +2,91 @@ import User from "../models/User.js";
 import bcrypt from "bcrypt";
 import { generateToken } from "../utils/jwt.js";
 
+const normalizeEmail = (value) => String(value ?? "").trim().toLowerCase();
 
+export const register = async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
+        const normalizedName = String(name ?? "").trim();
+        const normalizedEmail = normalizeEmail(email);
+        const trimmedPassword = String(password ?? "").trim();
 
-//register user 
-export const register = async (req,res)=>{
-    try{
-
-        const {name,email,password} = req.body;
-        if(!name || !email || !password){
-            return res.status(400).json({message: "Please fill all the fields"});
+        if (!normalizedName || !normalizedEmail || !trimmedPassword) {
+            return res.status(400).json({ message: "Please fill all the fields" });
         }
 
-        const existingUser = await User.findOne({email});
-        if(existingUser){
-            return res.status(400).json({message: "User already exists"});
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+            return res.status(400).json({ message: "Please provide a valid email address" });
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+        if (trimmedPassword.length < 8) {
+            return res.status(400).json({ message: "Password must be at least 8 characters long" });
+        }
+
+        const existingUser = await User.findOne({ email: normalizedEmail });
+        if (existingUser) {
+            return res.status(400).json({ message: "User already exists" });
+        }
+
+        const hashedPassword = await bcrypt.hash(trimmedPassword, 10);
         const user = await User.create({
-            name,
-            email,
-            password: hashedPassword
+            name: normalizedName,
+            email: normalizedEmail,
+            password: hashedPassword,
         });
 
         const token = generateToken({ id: user._id, tokenVersion: user.tokenVersion });
 
         const safeUser = user.toObject();
         delete safeUser.password;
-        res.status(201).json({success: true, message: "User created successfully", user: safeUser, token});
-
-    }catch(error){
-        res.status(500).json({message: "Internal server error"});
+        return res.status(201).json({ success: true, message: "User created successfully", user: safeUser, token });
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error" });
     }
-}
+};
 
-//login user
-export const login = async (req,res)=>{
-    try{
+export const login = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const normalizedEmail = normalizeEmail(email);
+        const trimmedPassword = String(password ?? "").trim();
 
-        const {email,password} = req.body;
-        if(!email || !password){
-            return res.status(400).json({message: "Please fill all the fields"});
+        if (!normalizedEmail || !trimmedPassword) {
+            return res.status(400).json({ message: "Please fill all the fields" });
         }
 
-        const existingUser = await User.findOne({email});
-        if(!existingUser){
-            return res.status(400).json({message: "Invalid credentials"});
+        const existingUser = await User.findOne({ email: normalizedEmail });
+        if (!existingUser) {
+            return res.status(400).json({ message: "Invalid credentials" });
         }
 
-        const isMatch = await bcrypt.compare(password, existingUser.password);
-        if(!isMatch){
-            return res.status(400).json({message: "Invalid credentials"});
+        const isMatch = await bcrypt.compare(trimmedPassword, existingUser.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: "Invalid credentials" });
         }
 
         const token = generateToken({ id: existingUser._id, tokenVersion: existingUser.tokenVersion });
 
         const safeUser = existingUser.toObject();
         delete safeUser.password;
-        res.status(200).json({success: true, message: "Login successful", user: safeUser, token});
+        return res.status(200).json({ success: true, message: "Login successful", user: safeUser, token });
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
 
-    }catch(error){
-        res.status(500).json({message: "Internal server error"});
-    };
-}
-
-//get current user : get current user details
-//getUser() identifies the logged-in user using their ID from the authentication middleware,
-//retrieves their data from MongoDB without the password, and sends it to the frontend.
-
-
-export const getUser = async (req,res)=>{
-    try{
-
-        const user = await User.findById(req.userId).select("-password"); //-password means we don't want to send the password in the response
-        if(!user){
-            return res.status(404).json({message: "User not found"});
+export const getUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.userId).select("-password");
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
         }
-        res.status(200).json({success: true, user});
 
-
-    }catch(error){
-        res.status(500).json({message: "Internal server error"});
-    };
-}
+        return res.status(200).json({ success: true, user });
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
 
 export const logout = async (req, res) => {
     try {
@@ -94,4 +96,3 @@ export const logout = async (req, res) => {
         return res.status(500).json({ message: "Internal server error" });
     }
 };
-
