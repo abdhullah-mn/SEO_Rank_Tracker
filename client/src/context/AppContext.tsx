@@ -8,6 +8,7 @@ interface User {
 	email: string;
 	plan: string;
 	analysisCount?: number;
+	createdAt?: string;
 };
 
 interface AppContextType {
@@ -17,6 +18,7 @@ interface AppContextType {
     api: AxiosInstance;
     login: (email: string, password: string) => Promise<{success: boolean, message: string}>;
     register: (name: string, email: string, password: string) => Promise<{success: boolean, message: string}>;
+    updateProfile: (name: string, email: string) => Promise<{success: boolean, message: string}>;
 	logout: () => void;
 };
 
@@ -107,12 +109,35 @@ export function AppProvider ({children}: {children: ReactNode}) {
                 return {success: false, message: res.data.message};
             }
 
-        }catch(error: any){
-            return {success: false, message: error.response?.data?.message || "Registration failed"};
+        }
+        catch (error: any) {
+    console.error("REGISTER ERROR:", error);
+    console.error("ERROR RESPONSE:", error.response?.data);
+    console.error("ERROR STATUS:", error.response?.status);
+
+    return {
+        success: false,
+        message: error.response?.data?.message || error.message || "Registration failed"
+    };
+}
 
         }
-        
-    }
+
+    const updateProfile = async (name: string, email: string) => {
+        try {
+            const { data } = await api.patch("/api/auth/user", { name, email });
+            if (data.success && data.user) {
+                setUser(data.user);
+                return { success: true, message: "Profile updated successfully" };
+            }
+            return { success: false, message: data.message || "Unable to update profile" };
+        } catch (error) {
+            const message = axios.isAxiosError(error)
+                ? error.response?.data?.message || "Unable to update profile"
+                : "Unable to update profile";
+            return { success: false, message };
+        }
+    };
 
     const logout = async ()=>{
         try {
@@ -128,7 +153,7 @@ export function AppProvider ({children}: {children: ReactNode}) {
     }
 
 
-    const value = {user, token, loading, api, login, register, logout};
+    const value = {user, token, loading, api, login, register, updateProfile, logout};
     return <AppContext.Provider value={value}>
             {children}
         </AppContext.Provider>

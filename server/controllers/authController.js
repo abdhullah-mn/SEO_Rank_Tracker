@@ -88,6 +88,39 @@ export const getUser = async (req, res) => {
     }
 };
 
+export const updateUser = async (req, res) => {
+    const name = String(req.body?.name ?? "").trim();
+    const email = normalizeEmail(req.body?.email);
+
+    if (!name || !email) {
+        return res.status(400).json({ message: "Name and email are required" });
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ message: "Please provide a valid email address" });
+    }
+
+    try {
+        const user = await User.findById(req.userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        user.name = name;
+        user.email = email;
+        await user.save();
+
+        const safeUser = user.toObject();
+        delete safeUser.password;
+        return res.status(200).json({ success: true, user: safeUser });
+    } catch (error) {
+        if (error?.code === 11000) {
+            return res.status(409).json({ message: "That email address is already in use" });
+        }
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
 export const logout = async (req, res) => {
     try {
         await User.findByIdAndUpdate(req.userId, { $inc: { tokenVersion: 1 } });

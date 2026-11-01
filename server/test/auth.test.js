@@ -43,6 +43,27 @@ test("JWT authentication and authorization flows", async (t) => {
     assert.equal((await request("/api/auth/user")).response.status, 401);
     assert.equal((await request("/api/auth/user", { headers: bearer("not-a-jwt") })).response.status, 401);
 
+    const updatedProfile = await request("/api/auth/user", {
+        method: "PATCH",
+        headers: bearer(token),
+        body: JSON.stringify({ name: "Updated Test User", email: `updated-${email}`, plan: "pro", role: "admin" }),
+    });
+    assert.equal(updatedProfile.response.status, 200);
+    assert.equal(updatedProfile.body.user.name, "Updated Test User");
+    assert.equal(updatedProfile.body.user.email, `updated-${email}`);
+    assert.equal(updatedProfile.body.user.plan, "free");
+    assert.equal(updatedProfile.body.user.role, "user");
+    assert.equal(updatedProfile.body.user.password, undefined);
+    assert.equal((await request("/api/auth/user", { headers: bearer(token) })).body.user.email, `updated-${email}`);
+    assert.equal((await request("/api/auth/user", { method: "PATCH", body: JSON.stringify({ name: "No token", email }) })).response.status, 401);
+
+    const invalidProfile = await request("/api/auth/user", {
+        method: "PATCH",
+        headers: bearer(token),
+        body: JSON.stringify({ name: "Updated Test User", email: "not-an-email" }),
+    });
+    assert.equal(invalidProfile.response.status, 400);
+
     const invalidLogin = await request("/api/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password: "wrong-password" }),
